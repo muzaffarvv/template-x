@@ -9,10 +9,14 @@ import uz.vv.templatex.enum.DocumentType
 class Document(
 
     @Column(nullable = false)
-    var name: String = "",
+    var orgName: String = "",
 
     @Column(name = "file_path", nullable = false)
-    var filePath: String, // Word fayli saqlangan joy (S3 key yoki path)
+    var filePath: String = "", // Word fayli saqlangan joy (S3 key yoki path)
+
+    // Auto-generated keyName: 10_char_uuid + originalName
+    @Column(nullable = false, unique = true, length = 100)
+    var keyName: String = "",
 
     var version: Int = 1, // eski documentlar buzilmasligi uchun
 
@@ -21,14 +25,10 @@ class Document(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
-    var docType: DocumentType = DocumentType.WORD, // Word / PDF / Image / etc
+    var docType: DocumentType = DocumentType.WORD, // Word / PDF / PNG / etc
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false)
     var organization: Organization,
 
-    @OneToMany(mappedBy = "document", cascade = [CascadeType.ALL], orphanRemoval = true)
-    @JoinColumn(name = "document_id", nullable = false)
-    var fields: MutableSet<DocumentField> = mutableSetOf()
-
-) : BaseEntity()
+    ) : BaseEntity()

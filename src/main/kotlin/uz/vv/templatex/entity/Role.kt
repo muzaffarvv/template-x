@@ -3,7 +3,6 @@ package uz.vv.templatex.entity
 import jakarta.persistence.*
 import uz.vv.templatex.base.BaseEntity
 
-
 @Entity
 @Table(name = "roles")
 data class Role(
