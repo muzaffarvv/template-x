@@ -29,7 +29,15 @@ class UserService(
         val organization = organizationRepository.findById(dto.organizationId)
             .orElseThrow { RuntimeException("Organization not found: ${dto.organizationId}") }
 
-        val roles = roleRepository.findAllByIdIn(dto.roleIds)
+        val roles = if (dto.roleIds.isNullOrEmpty()) {
+            roleRepository.findByCode("USER")?.let { mutableSetOf(it) } ?: mutableSetOf()
+        } else {
+            roleRepository.findAllByIdIn(dto.roleIds)
+        }
+
+        if (roles.isEmpty()) {
+            throw RuntimeException("At least one role must be assigned to the user")
+        }
 
         val user = User(
             firstName = dto.firstName,
@@ -61,7 +69,11 @@ class UserService(
                 .orElseThrow { RuntimeException("Organization not found: $it") }
         }
         dto.roleIds?.let {
-            user.roles = roleRepository.findAllByIdIn(it)
+            val roles = roleRepository.findAllByIdIn(it)
+            if (roles.isEmpty()) {
+                throw RuntimeException("At least one role must be assigned to the user")
+            }
+            user.roles = roles
         }
 
         return userRepository.save(user).toResponseDTO()

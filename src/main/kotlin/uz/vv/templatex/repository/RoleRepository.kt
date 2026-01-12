@@ -6,4 +6,5 @@ import java.util.UUID
 
 interface RoleRepository : JpaRepository<Role, UUID> {
     fun findAllByIdIn(ids: List<UUID>): MutableSet<Role>
+    fun findByCode(code: String): Role?
 }
