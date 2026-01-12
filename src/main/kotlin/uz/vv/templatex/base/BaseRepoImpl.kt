@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.support.JpaEntityInformation
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import java.util.*
 
-abstract class BaseRepoImpl<T : BaseEntity>(
+class BaseRepoImpl<T : BaseEntity>(
     entityInformation: JpaEntityInformation<T, UUID>,
     private val entityManager: EntityManager
 ) : SimpleJpaRepository<T, UUID>(entityInformation, entityManager), BaseRepo<T> {

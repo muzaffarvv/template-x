@@ -1,0 +1,47 @@
+package uz.vv.templatex.enum
+
+enum class ErrorCodes(val code: Long) {
+
+    // Validation
+    VALIDATION_ERROR(100),
+
+    // Organization
+    ORGANIZATION_NOT_FOUND(201),
+    ORGANIZATION_ALREADY_EXISTS(202),
+
+    // User
+    USER_NOT_FOUND(203),
+    USER_ALREADY_EXISTS(204),
+    USERNAME_ALREADY_EXISTS(205),
+
+    // Role
+    ROLE_NOT_FOUND(206),
+    ROLE_ALREADY_EXISTS(207),
+
+    // Permission
+    PERMISSION_NOT_FOUND(208),
+    PERMISSION_ALREADY_EXISTS(209),
+
+    // Document
+    DOCUMENT_NOT_FOUND(210),
+    DOCUMENT_ALREADY_EXISTS(211),
+
+    // DocumentField
+    DOCUMENT_FIELD_NOT_FOUND(212),
+
+    // GeneratedDocument
+    GENERATED_DOCUMENT_NOT_FOUND(213),
+
+    // Authentication
+    INVALID_CREDENTIALS(301),
+    TOKEN_EXPIRED(302),
+    UNAUTHORIZED(303),
+    FORBIDDEN(304),
+
+    // Business Logic
+    INVALID_FIELD_VALUE(401),
+    REQUIRED_FIELD_MISSING(402),
+    CONSTRAINT_VIOLATION(403),
+    FILE_UPLOAD_ERROR(404),
+    FILE_GENERATION_ERROR(405)
+}

@@ -7,14 +7,14 @@ import uz.vv.templatex.base.BaseEntity
 import uz.vv.templatex.enum.DocumentType
 
 @Entity
-@Table(name = "record_classes")
+@Table(name = "record_documents")
 class RecordDocument(
 
     @Column(nullable = false, length = 200)
     var name: String,
 
-    @Column(name = "generated_file_path", nullable = false, length = 500)
-    var generatedFilePath: String,
+    @Column(name = "generated_file_key", nullable = false)
+    var generatedFileKey: String,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "output_type", nullable = false, length = 20)
