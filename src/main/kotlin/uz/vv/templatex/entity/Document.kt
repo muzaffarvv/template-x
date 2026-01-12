@@ -9,10 +9,10 @@ import uz.vv.templatex.enum.DocumentType
 class Document(
 
     @Column(nullable = false)
-    var orgName: String = "",
+    var name: String = "",
 
-    @Column(name = "file_path", nullable = false)
-    var filePath: String = "", // Word fayli saqlangan joy (S3 key yoki path)
+    @Column(name = "file_url", nullable = false)
+    var fileUrl: String = "", // Word fayli saqlangan joy (S3 key yoki path)
 
     // Auto-generated keyName: 10_char_uuid + originalName
     @Column(nullable = false, unique = true, length = 100)

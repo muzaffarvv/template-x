@@ -18,10 +18,11 @@ class DocumentField(
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    var type: FieldType = FieldType.STRING,
+    var type: FieldType,
 
     var isRequired: Boolean = false,
 
+    @Column(nullable = false)
     var orderIndex: Int = 0, // fieldlar qaysi ketma-ketlikda chiqishini belgilaydi
 
     @JdbcTypeCode(SqlTypes.JSON)

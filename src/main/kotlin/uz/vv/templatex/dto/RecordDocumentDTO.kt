@@ -9,20 +9,20 @@ import uz.vv.templatex.enum.Status
 import java.time.Instant
 import java.util.UUID
 
-data class RecordClassCreateDTO(
+data class RecordDocumentCreateDTO(
     @field:NotBlank
     @field:Size(max = 200)
     val name: String,
 
     @field:NotBlank
-    @field:Size(max = 500)
-    val generatedFilePath: String,
+    val generatedFileKey: String,
 
     @field:NotNull
     val outputType: DocumentType,
 
     @field:NotNull
-    val fieldValues: Map<String, String>,
+    @field:Size(min = 1)
+    val fieldValues: Map<@NotBlank String, @NotBlank String>,
 
     @field:NotNull
     val documentId: UUID,
@@ -31,10 +31,10 @@ data class RecordClassCreateDTO(
     val userId: UUID
 )
 
-data class RecordClassResponseDTO(
+data class RecordDocumentResponseDTO(
     override val id: UUID?,
     val name: String,
-    val generatedFilePath: String,
+    val generatedFileKey: String,
     val outputType: DocumentType,
     val fieldValues: Map<String, String>,
     val status: Status,
