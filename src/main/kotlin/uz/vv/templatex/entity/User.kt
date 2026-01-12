@@ -25,6 +25,9 @@ class User(
     @Column(nullable = false, length = 100)
     var password: String,
 
+    @Column(nullable = false, unique = true, length = 20)
+    var code: String = "", // EMP001,
+
     @ManyToMany(fetch = FetchType.LAZY)
     var roles: MutableSet<Role> = mutableSetOf(),
 

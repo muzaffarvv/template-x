@@ -13,8 +13,8 @@ class DocumentField(
     @Column(nullable = false, length = 72)
     var label: String, // UI'da ko'rinadigan nom: "Mijozning ismi"
 
-    @Column(name = "field_key", nullable = false, length = 60)
-    var key: String, // placeholder: ${client_name} -> key: client_name
+    @Column(nullable = false, length = 60)
+    var keyName: String, // placeholder: ${client_name} -> key: client_name
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -26,7 +26,7 @@ class DocumentField(
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    var constraints: Map<String, Any>? = null, // JSONB rule: {"min": 18, "regex": "..."}
+    var constraints: Map<String, String>? = null, // JSONB rule: {"min": 18, "regex": "..."}
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id", nullable = false)

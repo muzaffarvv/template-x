@@ -33,9 +33,12 @@ abstract class BaseEntity {
 
     @LastModifiedBy
     @Column(length = 36)
-    var updateBy: UUID? = null
+    var updatedBy: UUID? = null
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     var status: Status = Status.ACTIVE
+
+    @Column(nullable = false)
+    var deleted: Boolean = false
 }
