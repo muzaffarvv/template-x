@@ -13,4 +13,8 @@ interface UserRepo : BaseRepo<User> {
 
     @Query("SELECT MAX(CAST(SUBSTRING(u.code, 4) AS int)) FROM User u WHERE u.code LIKE 'EMP%'")
     fun findMaxCodeNumber(): Int?
+
+    fun countByDeletedFalse(): Long
+    fun countByStatusAndDeletedFalse(status: uz.vv.templatex.enum.Status): Long
+    fun countByOrganizationIdAndDeletedFalse(organizationId: UUID): Int
 }

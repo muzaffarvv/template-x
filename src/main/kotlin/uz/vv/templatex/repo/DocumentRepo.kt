@@ -9,4 +9,7 @@ import java.util.UUID
 interface DocumentRepo : BaseRepo<Document> {
     fun findByOrganizationIdAndDeletedFalse(organizationId: UUID): List<Document>
     fun findByKeyNameAndDeletedFalse(keyName: String): Document?
+
+    fun countByDeletedFalse(): Long
+    fun countByOrganizationIdAndDeletedFalse(organizationId: UUID): Int
 }

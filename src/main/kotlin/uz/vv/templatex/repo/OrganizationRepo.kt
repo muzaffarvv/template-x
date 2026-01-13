@@ -11,4 +11,6 @@ interface OrganizationRepo : BaseRepo<Organization> {
 
     @Query("SELECT MAX(CAST(SUBSTRING(o.code, 4) AS int)) FROM Organization o WHERE o.code LIKE 'ORG%'")
     fun findMaxCodeNumber(): Int?
+
+    fun countByDeletedFalse(): Long
 }

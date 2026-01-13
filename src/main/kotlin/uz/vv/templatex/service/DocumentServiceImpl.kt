@@ -88,14 +88,13 @@ class DocumentServiceImpl(
     @Transactional(readOnly = true)
     override fun getById(id: UUID): DocumentResponseDTO {
         val entity = getEntityOrNull(id)
-            ?: throw DocumentNotFoundException("Document with id '$id' not found")
+            ?: throw DocumentNotFoundException("Document not found: $id")
         return mapper.toDTO(entity)
     }
 
-    @Transactional
     override fun update(id: UUID, dto: DocumentUpdateDTO): DocumentResponseDTO {
         val entity = getEntityOrNull(id)
-            ?: throw DocumentNotFoundException("Document with id '$id' not found")
+            ?: throw DocumentNotFoundException("Document not found: $id")
         updateEntityFromDto(entity, dto)
         return mapper.toDTO(saveAndRefresh(entity))
     }

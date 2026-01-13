@@ -9,4 +9,6 @@ import java.util.UUID
 interface RecordDocumentRepo : BaseRepo<RecordDocument> {
     fun findByUserIdAndDeletedFalse(userId: UUID): List<RecordDocument>
     fun findByDocumentIdAndDeletedFalse(documentId: UUID): List<RecordDocument>
+
+    fun countByDeletedFalse(): Long
 }

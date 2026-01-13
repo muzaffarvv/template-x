@@ -33,18 +33,18 @@ class RecordDocumentServiceImpl(
 
     override fun validateCreate(dto: RecordDocumentCreateDTO) {
         documentRepo.findByIdAndDeletedFalse(dto.documentId)
-            ?: throw DocumentNotFoundException("Document with id '${dto.documentId}' not found")
+            ?: throw DocumentNotFoundException("Document not found: ${dto.documentId}")
 
         userRepo.findByIdAndDeletedFalse(dto.userId)
-            ?: throw UserNotFoundException("User with id '${dto.userId}' not found")
+            ?: throw UserNotFoundException("User not found: ${dto.userId}")
     }
 
     override fun convertCreateDtoToEntity(dto: RecordDocumentCreateDTO): RecordDocument {
         val document = documentRepo.findByIdAndDeletedFalse(dto.documentId)
-            ?: throw DocumentNotFoundException("Document not found")
+            ?: throw DocumentNotFoundException("Document not found: ${dto.documentId}")
 
         val user = userRepo.findByIdAndDeletedFalse(dto.userId)
-            ?: throw UserNotFoundException("User not found")
+            ?: throw UserNotFoundException("User not found: ${dto.userId}")
 
         return RecordDocument(
             name = dto.name,
@@ -63,7 +63,7 @@ class RecordDocumentServiceImpl(
     @Transactional(readOnly = true)
     override fun getById(id: UUID): RecordDocumentResponseDTO {
         val entity = getEntityOrNull(id)
-            ?: throw GeneratedDocumentNotFoundException("Record with id '$id' not found")
+            ?: throw GeneratedDocumentNotFoundException("Record not found: $id")
         return mapper.toDTO(entity)
     }
 
