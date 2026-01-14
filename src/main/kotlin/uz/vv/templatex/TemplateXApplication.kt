@@ -2,10 +2,12 @@ package uz.vv.templatex
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import uz.vv.templatex.base.BaseRepoImpl
 
 @SpringBootApplication
+@EnableJpaAuditing
 @EnableJpaRepositories(
     basePackages = ["uz.vv.templatex"],
     repositoryBaseClass = BaseRepoImpl::class

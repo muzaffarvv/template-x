@@ -67,16 +67,20 @@ class UserService(
             foundRoles
         }
 
+        val nextCodeNumber = (userRepository.findMaxCodeNumber() ?: 0) + 1
+        val code = "EMP${nextCodeNumber.toString().padStart(3, '0')}"
+
         val user = User(
             firstName = dto.firstName,
             lastName = dto.lastName,
             username = dto.username,
             password = passwordEncoder.encode(dto.password),
             organization = organization,
-            roles = roles
+            roles = roles,
+            code = code
         )
 
-        return userRepository.save(user).toResponseDTO()
+        return userRepository.saveAndRefresh(user).toResponseDTO()
     }
 
     @Transactional

@@ -43,6 +43,9 @@ class BaseRepoImpl<T : BaseEntity>(
 
     @Transactional
     override fun saveAndRefresh(t: T): T {
-        return save(t).apply { entityManager.refresh(this) }
+        val saved = save(t)
+        entityManager.flush()
+        entityManager.refresh(saved)
+        return saved
     }
 }
