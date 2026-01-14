@@ -3,9 +3,9 @@ spring:
     name: templatex
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/organization
-    username: mukarit
-    password: 1234
+    url: jdbc:postgresql://localhost:5432/templatex_db
+    username: postgres
+    password: admin
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -27,8 +27,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 15MB
+      max-request-size: 15MB
 
   jackson:
     date-format: dd-MM-yyyy

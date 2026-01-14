@@ -42,13 +42,10 @@ class DocumentServiceImpl(
 
     @Transactional
     override fun uploadAndSave(file: MultipartFile, organizationId: UUID, name: String): DocumentResponseDTO {
-        // 1. Save file to disk
         val filePath = fileStorageService.save(file, organizationId)
 
-        // 2. Extract placeholders from Word document
         val placeholders = extractPlaceholders(filePath)
 
-        // 3. Create document entity
         val organization = organizationRepo.findByIdAndDeletedFalse(organizationId)
             ?: throw OrganizationNotFoundException("Organization not found")
 
@@ -108,7 +105,6 @@ class DocumentServiceImpl(
                 }
             }
         } catch (e: Exception) {
-            // Log error or throw specific exception
             println("Error extracting placeholders: ${e.message}")
         }
         return placeholders

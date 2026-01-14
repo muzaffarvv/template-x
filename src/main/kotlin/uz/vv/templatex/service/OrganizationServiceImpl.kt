@@ -22,6 +22,8 @@ class OrganizationServiceImpl(
     override fun convertCreateDtoToEntity(dto: OrganizationCreateDTO): Organization {
         val nextCodeNumber = (repository.findMaxCodeNumber() ?: 0) + 1
         val code = "ORG${nextCodeNumber.toString().padStart(3, '0')}"
+
+        // validation name address regex
         
         return Organization(
             name = dto.name,
@@ -43,6 +45,7 @@ class OrganizationServiceImpl(
     }
 
     override fun update(id: UUID, dto: OrganizationUpdateDTO): OrganizationDTO {
+        // validate name address
         val entity = getEntityOrNull(id) ?: throw OrganizationNotFoundException("Organization not found: $id")
         updateEntityFromDto(entity, dto)
         return mapper.toDTO(repository.save(entity))

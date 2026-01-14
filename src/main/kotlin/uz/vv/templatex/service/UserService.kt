@@ -15,6 +15,7 @@ import uz.vv.templatex.exception.UsernameAlreadyExistsException
 import uz.vv.templatex.repo.OrganizationRepo
 import uz.vv.templatex.repo.RoleRepo
 import uz.vv.templatex.repo.UserRepo
+import uz.vv.templatex.base.BaseMapper
 import java.util.UUID
 
 @Service
@@ -27,7 +28,7 @@ class UserService(
     userRepository, UserMapperStub()
 ) {
 
-    class UserMapperStub : uz.vv.templatex.base.BaseMapper<User, UserResponseDTO> {
+    class UserMapperStub : BaseMapper<User, UserResponseDTO> {
         override fun toDTO(entity: User): UserResponseDTO {
             return UserResponseDTO(
                 id = entity.id,
@@ -57,7 +58,7 @@ class UserService(
         val organization = organizationRepository.findByIdAndDeletedFalse(dto.organizationId)
             ?: throw OrganizationNotFoundException("Organization not found: ${dto.organizationId}")
 
-        val roles = if (dto.roleIds.isNullOrEmpty()) {
+        val roles = if (dto.roleIds.isEmpty()) {
             roleRepository.findByCodeAndDeletedFalse("USER")?.let { mutableSetOf(it) } ?: throw RoleNotFoundException("Default role 'USER' not found")
         } else {
             val foundRoles = roleRepository.findAllByIdInAndDeletedFalse(dto.roleIds)

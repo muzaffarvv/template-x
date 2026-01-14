@@ -4,7 +4,6 @@ enum class DocumentType {
     WORD,      // .docx shablonlar uchun
     PDF,       // Tayyor PDF yoki PDF shablonlar uchun
     PNG,
-    EXCEL,
     HTML,
     MARKDOWN
 }

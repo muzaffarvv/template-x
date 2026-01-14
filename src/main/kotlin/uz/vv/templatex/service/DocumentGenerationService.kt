@@ -86,9 +86,6 @@ class DocumentGenerationService(
         userId: UUID,
         requestedFormat: DocumentType
     ): ByteArray {
-        // If it's already in the requested format and we have the file, return it
-        // (Simplified logic: always regenerate for now to ensure consistency, 
-        // or we could check if filePath matches the requested format)
         
         val (_, content) = generateDocument(
             documentId = documentId,
