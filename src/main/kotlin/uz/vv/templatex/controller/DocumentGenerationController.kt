@@ -12,12 +12,15 @@ import uz.vv.templatex.dto.DocumentGenerationRequestDTO
 import uz.vv.templatex.dto.DocumentGenerationResponseDTO
 import uz.vv.templatex.enum.DocumentType
 import uz.vv.templatex.exception.ResponseVO
+import uz.vv.templatex.dto.RecordDocumentCreateDTO
 import uz.vv.templatex.service.DocumentGenerationService
+import uz.vv.templatex.service.RecordDocumentService
 
 @RestController
 @RequestMapping("/api/generate")
 class DocumentGenerationController(
-    private val documentGenerationService: DocumentGenerationService
+    private val documentGenerationService: DocumentGenerationService,
+    private val recordDocumentService: RecordDocumentService
 ) {
 
     /**
@@ -38,6 +41,18 @@ class DocumentGenerationController(
 
         val fileName = filePath.substringAfterLast("/")
 
+        // Save record to database
+        recordDocumentService.create(
+            RecordDocumentCreateDTO(
+                name = fileName,
+                generatedFileKey = filePath,
+                outputType = request.outputType,
+                fieldValues = request.fieldValues,
+                documentId = request.documentId,
+                userId = request.userId
+            )
+        )
+
         val response = DocumentGenerationResponseDTO(
             filePath = filePath,
             fileName = fileName,
@@ -56,11 +71,25 @@ class DocumentGenerationController(
         @Valid @RequestBody request: DocumentGenerationRequestDTO
     ): ResponseEntity<ByteArray> {
 
-        val (_, content) = documentGenerationService.generateDocument(
+        val (filePath, content) = documentGenerationService.generateDocument(
             documentId = request.documentId,
             fieldValues = request.fieldValues,
             outputType = request.outputType,
             userId = request.userId
+        )
+
+        val fileName = filePath.substringAfterLast("/")
+
+        // Save record to database
+        recordDocumentService.create(
+            RecordDocumentCreateDTO(
+                name = fileName,
+                generatedFileKey = filePath,
+                outputType = request.outputType,
+                fieldValues = request.fieldValues,
+                documentId = request.documentId,
+                userId = request.userId
+            )
         )
 
         val extension = when (request.outputType) {

@@ -66,23 +66,49 @@ data class MultiFileUploadResponseDTO(
     val totalCount: Int
 )
 
-data class DocumentGenerationRequestDTO(
-    @field:NotNull
-    val documentId: UUID,
-
-    @field:NotNull
-    val outputType: DocumentType,
-
-    @field:NotNull
-    val fieldValues: Map<String, String>,
-
-    @field:NotNull
-    val userId: UUID
-)
-
 data class DocumentGenerationResponseDTO(
     val filePath: String,
     val fileName: String,
     val outputType: DocumentType,
     val message: String = "Document generated successfully"
+)
+
+data class DocumentUploadResponseDTO(
+    val documentId: UUID,
+    val name: String,
+    val fileUrl: String,
+    val placeholders: List<String>,
+    val placeholdersCopyText: String,
+    val fields: List<DocumentFieldResponseDTO>
+)
+
+data class DocumentGenerationRequestDTO(
+    @field:NotNull(message = "documentId is required")
+    val documentId: UUID,
+
+    @field:NotNull(message = "fieldValues is required")
+    @field:Size(min = 1, message = "At least one field value is required")
+    val fieldValues: Map<@NotBlank String, @NotBlank String>,
+
+    @field:NotNull(message = "outputType is required")
+    val outputType: DocumentType,
+
+    @field:NotNull(message = "userId is required")
+    val userId: UUID
+)
+
+data class GenerateDocumentResponseDTO(
+    val recordId: UUID,
+    val documentId: UUID,
+    val filePath: String,
+    val availableFormats: List<DocumentType>,
+    val message: String
+)
+
+data class UserRecordHistoryDTO(
+    val recordId: UUID,
+    val documentName: String,
+    val generatedDate: Instant,
+    val outputType: DocumentType,
+    val availableFormats: List<DocumentType>
 )

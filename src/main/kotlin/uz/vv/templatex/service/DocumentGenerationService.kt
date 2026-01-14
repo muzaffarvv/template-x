@@ -16,6 +16,8 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.imageio.ImageIO
 
@@ -24,6 +26,9 @@ class DocumentGenerationService(
     private val documentRepo: DocumentRepo,
     private val fileStorageService: FileStorageService
 ) {
+
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        .withZone(ZoneId.systemDefault())
 
     /**
      * Generate document from template
@@ -71,8 +76,31 @@ class DocumentGenerationService(
     }
 
     /**
+     * Get or generate document in specified format
+     */
+    fun getOrGenerateFormat(
+        recordId: UUID,
+        filePath: String,
+        fieldValues: Map<String, String>,
+        documentId: UUID,
+        userId: UUID,
+        requestedFormat: DocumentType
+    ): ByteArray {
+        // If it's already in the requested format and we have the file, return it
+        // (Simplified logic: always regenerate for now to ensure consistency, 
+        // or we could check if filePath matches the requested format)
+        
+        val (_, content) = generateDocument(
+            documentId = documentId,
+            fieldValues = fieldValues,
+            outputType = requestedFormat,
+            userId = userId
+        )
+        return content
+    }
+
+    /**
      * Process Word template
-     * Word template'dagi placeholder'larni replace qiladi
      */
     private fun processWordTemplate(templateFile: File, fieldValues: Map<String, String>): ByteArray {
         try {
@@ -87,10 +115,18 @@ class DocumentGenerationService(
                         text = text.replace(placeholder, value)
                     }
 
+                    // Handle date replacement
+                    if (text.contains("\${date}")) {
+                        text = text.replace("\${date}", dateFormatter.format(java.time.Instant.now()))
+                    }
+
                     // Clear and set new text
                     if (text != paragraph.text) {
-                        val runs = paragraph.runs
-                        runs.forEach { paragraph.removeRun(0) }
+                        // Create a copy of runs to avoid ConcurrentModificationException when removing
+                        val runsToProcess = paragraph.runs.toList()
+                        for (i in runsToProcess.indices.reversed()) {
+                            paragraph.removeRun(i)
+                        }
                         val newRun = paragraph.createRun()
                         newRun.setText(text)
                     }
@@ -107,9 +143,16 @@ class DocumentGenerationService(
                                     text = text.replace(placeholder, value)
                                 }
 
+                                // Handle date replacement
+                                if (text.contains("\${date}")) {
+                                    text = text.replace("\${date}", dateFormatter.format(java.time.Instant.now()))
+                                }
+
                                 if (text != paragraph.text) {
-                                    val runs = paragraph.runs
-                                    runs.forEach { paragraph.removeRun(0) }
+                                    val runsToProcess = paragraph.runs.toList()
+                                    for (i in runsToProcess.indices.reversed()) {
+                                        paragraph.removeRun(i)
+                                    }
                                     val newRun = paragraph.createRun()
                                     newRun.setText(text)
                                 }
@@ -126,6 +169,8 @@ class DocumentGenerationService(
                 return outputStream.toByteArray()
             }
         } catch (e: Exception) {
+            println("[DEBUG_LOG] processWordTemplate error: ${e.message}")
+            e.printStackTrace()
             throw FileGenerationException("Failed to process Word template: ${e.message}")
         }
     }

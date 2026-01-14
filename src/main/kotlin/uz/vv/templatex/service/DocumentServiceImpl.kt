@@ -16,12 +16,20 @@ import uz.vv.templatex.repo.DocumentRepo
 import uz.vv.templatex.repo.OrganizationRepo
 import java.util.UUID
 
+import org.springframework.web.multipart.MultipartFile
+import uz.vv.templatex.enum.FieldType
+import java.io.FileInputStream
+import org.apache.poi.xwpf.usermodel.XWPFDocument
+import uz.vv.templatex.enum.Status
+import java.time.Instant
+
 @Service
 class DocumentServiceImpl(
     repository: DocumentRepo,
     mapper: DocumentMapper,
     private val organizationRepo: OrganizationRepo,
-    private val documentFieldRepo: DocumentFieldRepo
+    private val documentFieldRepo: DocumentFieldRepo,
+    private val fileStorageService: FileStorageService
 ) : BaseServiceImpl<
         Document,
         DocumentCreateDTO,
@@ -31,6 +39,80 @@ class DocumentServiceImpl(
         DocumentRepo>(
     repository, mapper
 ), DocumentService {
+
+    @Transactional
+    override fun uploadAndSave(file: MultipartFile, organizationId: UUID, name: String): DocumentResponseDTO {
+        // 1. Save file to disk
+        val filePath = fileStorageService.save(file, organizationId)
+
+        // 2. Extract placeholders from Word document
+        val placeholders = extractPlaceholders(filePath)
+
+        // 3. Create document entity
+        val organization = organizationRepo.findByIdAndDeletedFalse(organizationId)
+            ?: throw OrganizationNotFoundException("Organization not found")
+
+        val uuid = UUID.randomUUID().toString().replace("-", "")
+        val keyName = uuid.take(10) + "_${name.replace(" ", "_")}"
+
+        val document = Document(
+            name = name,
+            fileUrl = filePath,
+            size = file.size,
+            docType = uz.vv.templatex.enum.DocumentType.WORD, // Default to WORD for now as we only support placeholder extraction for Word
+            organization = organization,
+            keyName = keyName
+        )
+        val savedDocument = repository.saveAndRefresh(document)
+
+        // 4. Create document fields for each placeholder
+        placeholders.forEachIndexed { index, placeholder ->
+            val field = DocumentField(
+                label = placeholder.replaceFirstChar { it.uppercase() },
+                keyName = placeholder,
+                type = FieldType.STRING,
+                isRequired = true,
+                orderIndex = index,
+                document = savedDocument
+            )
+            documentFieldRepo.saveAndRefresh(field)
+        }
+
+        return getById(savedDocument.id!!)
+    }
+
+    private fun extractPlaceholders(filePath: String): Set<String> {
+        val placeholders = mutableSetOf<String>()
+        try {
+            val file = fileStorageService.getFile(filePath)
+            FileInputStream(file).use { fis ->
+                val doc = XWPFDocument(fis)
+                val regex = Regex("\\$\\{([^}]+)\\}")
+
+                doc.paragraphs.forEach { paragraph ->
+                    regex.findAll(paragraph.text).forEach { matchResult ->
+                        placeholders.add(matchResult.groupValues[1])
+                    }
+                }
+
+                doc.tables.forEach { table ->
+                    table.rows.forEach { row ->
+                        row.tableCells.forEach { cell ->
+                            cell.paragraphs.forEach { paragraph ->
+                                regex.findAll(paragraph.text).forEach { matchResult ->
+                                    placeholders.add(matchResult.groupValues[1])
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Log error or throw specific exception
+            println("Error extracting placeholders: ${e.message}")
+        }
+        return placeholders
+    }
 
     override fun validateCreate(dto: DocumentCreateDTO) {
         organizationRepo.findByIdAndDeletedFalse(dto.organizationId)

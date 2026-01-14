@@ -8,4 +8,10 @@ import java.util.UUID
 
 interface DocumentService : BaseService<DocumentCreateDTO, DocumentUpdateDTO, DocumentResponseDTO> {
     fun getDocumentsByOrganization(organizationId: UUID): List<DocumentResponseDTO>
+
+    fun uploadAndSave(
+        file: org.springframework.web.multipart.MultipartFile,
+        organizationId: UUID,
+        name: String
+    ): DocumentResponseDTO
 }
