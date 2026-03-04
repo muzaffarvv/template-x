@@ -72,7 +72,6 @@ class DocumentController(
         @Valid @RequestBody request: DocumentGenerationRequestDTO
     ): ResponseEntity<ResponseVO<GenerateDocumentResponseDTO>> {
 
-        // Generate document and save record
         val (filePath, _) = documentGenerationService.generateDocument(
             documentId = request.documentId,
             fieldValues = request.fieldValues,
@@ -80,7 +79,6 @@ class DocumentController(
             userId = request.userId
         )
 
-        // Save record to database
         val recordCreateDTO = RecordDocumentCreateDTO(
             name = "Generated_${System.currentTimeMillis()}",
             generatedFileKey = filePath,
@@ -103,10 +101,6 @@ class DocumentController(
         return ResponseEntity.ok(ResponseVO(status = 200, data = response))
     }
 
-    /**
-     * 4. Download generated document in specified format
-     * GET /api/records/{id}/download?format=WORD|PDF|PNG
-     */
     @GetMapping("/records/{id}/download")
     fun downloadGeneratedDocument(
         @PathVariable id: UUID,

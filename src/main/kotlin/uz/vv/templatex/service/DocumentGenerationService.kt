@@ -30,10 +30,6 @@ class DocumentGenerationService(
     private val dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
         .withZone(ZoneId.systemDefault())
 
-    /**
-     * Generate document from template
-     * Template'dan yangi hujjat generatsiya qiladi
-     */
     fun generateDocument(
         documentId: UUID,
         fieldValues: Map<String, String>,
@@ -44,40 +40,135 @@ class DocumentGenerationService(
         val document = documentRepo.findByIdAndDeletedFalse(documentId)
             ?: throw DocumentNotFoundException("Document with id '$documentId' not found")
 
-        // Get a template file
         val templateFile = fileStorageService.getFile(document.fileUrl)
 
-        // Process template based on a document type
         val processedContent = when (document.docType) {
             DocumentType.WORD -> processWordTemplate(templateFile, fieldValues)
             else -> throw FileGenerationException("Template type ${document.docType} is not supported yet")
         }
 
-        // Convert to the requested output format
-        val outputContent = when (outputType) {
-            DocumentType.WORD -> processedContent
-            DocumentType.PDF -> convertWordToPdf(processedContent)
-            DocumentType.PNG -> convertWordToImage(processedContent)
-            else -> throw FileGenerationException("Output type $outputType is not supported")
-        }
-
-        // Save a generated file
-        val extension = when (outputType) {
-            DocumentType.WORD -> "docx"
-            DocumentType.PDF -> "pdf"
-            DocumentType.PNG -> "png"
-            else -> "bin"
-        }
-
-        val fileName = "${document.name.replace(" ", "_")}.$extension"
+        val outputContent = convertToOutputFormat(processedContent, outputType)
+        val fileName = "${document.name.replace(" ", "_")}.${getFileExtension(outputType)}"
         val savedPath = fileStorageService.saveGeneratedFile(outputContent, fileName, userId)
 
         return Pair(savedPath, outputContent)
     }
 
-    /**
-     * Get or generate document in specified format
-     */
+    private fun processWordTemplate(templateFile: File, fieldValues: Map<String, String>): ByteArray {
+        try {
+            FileInputStream(templateFile).use { fis ->
+                val doc = XWPFDocument(fis)
+
+                // 1. Paragraflardagi placeholderlarni almashtirish
+                doc.paragraphs.forEach { replacePlaceholders(it, fieldValues) }
+
+                // 2. Jadvallardagi placeholderlarni almashtirish
+                doc.tables.forEach { table ->
+                    table.rows.forEach { row ->
+                        row.tableCells.forEach { cell ->
+                            cell.paragraphs.forEach { replacePlaceholders(it, fieldValues) }
+                        }
+                    }
+                }
+
+                val outputStream = ByteArrayOutputStream()
+                doc.use { it.write(outputStream) }
+                return outputStream.toByteArray()
+            }
+        } catch (e: Exception) {
+            throw FileGenerationException("Failed to process Word template: ${e.message}")
+        }
+    }
+
+
+    private fun replacePlaceholders(paragraph: org.apache.poi.xwpf.usermodel.XWPFParagraph, fieldValues: Map<String, String>) {
+        var text = paragraph.text
+        if (text.isNullOrBlank()) return
+
+        fieldValues.forEach { (key, value) ->
+            text = text.replace("\${$key}", value)
+        }
+
+        if (text.contains("\${date}")) {
+            text = text.replace("\${date}", dateFormatter.format(java.time.Instant.now()))
+        }
+
+        if (text != paragraph.text) {
+            for (i in paragraph.runs.size - 1 downTo 0) {
+                paragraph.removeRun(i)
+            }
+            paragraph.createRun().setText(text)
+        }
+    }
+
+    private fun convertToOutputFormat(content: ByteArray, type: DocumentType): ByteArray = when (type) {
+        DocumentType.WORD -> content
+        DocumentType.PDF -> convertWordToPdf(content)
+        DocumentType.PNG -> convertWordToImage(content)
+        else -> throw FileGenerationException("Output type $type is not supported")
+    }
+
+    private fun getFileExtension(type: DocumentType) = when (type) {
+        DocumentType.WORD -> "docx"
+        DocumentType.PDF -> "pdf"
+        DocumentType.PNG -> "png"
+        else -> "bin"
+    }
+
+    private fun convertWordToPdf(wordContent: ByteArray): ByteArray {
+        try {
+            val doc = XWPFDocument(wordContent.inputStream())
+            val outputStream = ByteArrayOutputStream()
+            val pdfDoc = PdfDocument(PdfWriter(outputStream))
+            val pdfLayout = PdfLayoutDocument(pdfDoc)
+
+            doc.paragraphs.filter { it.text.isNotBlank() }.forEach {
+                pdfLayout.add(Paragraph(it.text))
+            }
+
+            doc.tables.forEach { table ->
+                table.rows.forEach { row ->
+                    val rowText = row.tableCells.joinToString(" | ") { it.text }
+                    if (rowText.isNotBlank()) pdfLayout.add(Paragraph(rowText))
+                }
+            }
+
+            pdfLayout.close()
+            doc.close()
+            return outputStream.toByteArray()
+        } catch (e: Exception) {
+            throw FileGenerationException("Failed to convert to PDF: ${e.message}")
+        }
+    }
+
+    private fun convertWordToImage(wordContent: ByteArray): ByteArray {
+        try {
+            val doc = XWPFDocument(wordContent.inputStream())
+            val image = BufferedImage(800, 1000, BufferedImage.TYPE_INT_RGB)
+            val graphics = image.createGraphics().apply {
+                color = Color.WHITE
+                fillRect(0, 0, 800, 1000)
+                color = Color.BLACK
+                font = Font("Arial", Font.PLAIN, 14)
+            }
+
+            var y = 30
+            doc.paragraphs.filter { it.text.isNotBlank() }.forEach {
+                graphics.drawString(it.text, 20, y)
+                y += 25
+            }
+
+            graphics.dispose()
+            doc.close()
+
+            val outputStream = ByteArrayOutputStream()
+            ImageIO.write(image, "PNG", outputStream)
+            return outputStream.toByteArray()
+        } catch (e: Exception) {
+            throw FileGenerationException("Failed to convert to image: ${e.message}")
+        }
+    }
+
     fun getOrGenerateFormat(
         recordId: UUID,
         filePath: String,
@@ -86,172 +177,6 @@ class DocumentGenerationService(
         userId: UUID,
         requestedFormat: DocumentType
     ): ByteArray {
-        
-        val (_, content) = generateDocument(
-            documentId = documentId,
-            fieldValues = fieldValues,
-            outputType = requestedFormat,
-            userId = userId
-        )
-        return content
-    }
-
-    /**
-     * Process Word template
-     */
-    private fun processWordTemplate(templateFile: File, fieldValues: Map<String, String>): ByteArray {
-        try {
-            FileInputStream(templateFile).use { fis ->
-                val doc = XWPFDocument(fis)
-
-                // Replace placeholders in paragraphs
-                doc.paragraphs.forEach { paragraph ->
-                    var text = paragraph.text
-                    fieldValues.forEach { (key, value) ->
-                        val placeholder = "\${$key}"
-                        text = text.replace(placeholder, value)
-                    }
-
-                    // Handle date replacement
-                    if (text.contains("\${date}")) {
-                        text = text.replace("\${date}", dateFormatter.format(java.time.Instant.now()))
-                    }
-
-                    // Clear and set new text
-                    if (text != paragraph.text) {
-                        // Create a copy of runs to avoid ConcurrentModificationException when removing
-                        val runsToProcess = paragraph.runs.toList()
-                        for (i in runsToProcess.indices.reversed()) {
-                            paragraph.removeRun(i)
-                        }
-                        val newRun = paragraph.createRun()
-                        newRun.setText(text)
-                    }
-                }
-
-                // Replace in tables
-                doc.tables.forEach { table ->
-                    table.rows.forEach { row ->
-                        row.tableCells.forEach { cell ->
-                            cell.paragraphs.forEach { paragraph ->
-                                var text = paragraph.text
-                                fieldValues.forEach { (key, value) ->
-                                    val placeholder = "\${$key}"
-                                    text = text.replace(placeholder, value)
-                                }
-
-                                // Handle date replacement
-                                if (text.contains("\${date}")) {
-                                    text = text.replace("\${date}", dateFormatter.format(java.time.Instant.now()))
-                                }
-
-                                if (text != paragraph.text) {
-                                    val runsToProcess = paragraph.runs.toList()
-                                    for (i in runsToProcess.indices.reversed()) {
-                                        paragraph.removeRun(i)
-                                    }
-                                    val newRun = paragraph.createRun()
-                                    newRun.setText(text)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Write to byte array
-                val outputStream = ByteArrayOutputStream()
-                doc.write(outputStream)
-                doc.close()
-
-                return outputStream.toByteArray()
-            }
-        } catch (e: Exception) {
-            println("[DEBUG_LOG] processWordTemplate error: ${e.message}")
-            e.printStackTrace()
-            throw FileGenerationException("Failed to process Word template: ${e.message}")
-        }
-    }
-
-    /**
-     * Convert Word to PDF
-     */
-    private fun convertWordToPdf(wordContent: ByteArray): ByteArray {
-        try {
-            // Read Word document
-            val doc = XWPFDocument(wordContent.inputStream())
-
-            // Create PDF
-            val outputStream = ByteArrayOutputStream()
-            val pdfWriter = PdfWriter(outputStream)
-            val pdfDoc = PdfDocument(pdfWriter)
-            val pdfDocument = PdfLayoutDocument(pdfDoc)
-
-            // Convert paragraphs to PDF
-            doc.paragraphs.forEach { paragraph ->
-                if (paragraph.text.isNotBlank()) {
-                    pdfDocument.add(Paragraph(paragraph.text))
-                }
-            }
-
-            // Convert tables to PDF (simplified)
-            doc.tables.forEach { table ->
-                table.rows.forEach { row ->
-                    val rowText = row.tableCells.joinToString(" | ") { it.text }
-                    if (rowText.isNotBlank()) {
-                        pdfDocument.add(Paragraph(rowText))
-                    }
-                }
-            }
-
-            pdfDocument.close()
-            doc.close()
-
-            return outputStream.toByteArray()
-        } catch (e: Exception) {
-            throw FileGenerationException("Failed to convert to PDF: ${e.message}")
-        }
-    }
-
-    /**
-     * Convert Word to Image (PNG)
-     */
-    private fun convertWordToImage(wordContent: ByteArray): ByteArray {
-        try {
-            // Read Word document
-            val doc = XWPFDocument(wordContent.inputStream())
-
-            // Create png
-            val width = 800
-            val height = 1000
-            val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-            val graphics = image.createGraphics()
-
-            // White background
-            graphics.color = Color.WHITE
-            graphics.fillRect(0, 0, width, height)
-
-            // Draw text
-            graphics.color = Color.BLACK
-            graphics.font = Font("Arial", Font.PLAIN, 14)
-
-            var y = 30
-            doc.paragraphs.forEach { paragraph ->
-                if (paragraph.text.isNotBlank()) {
-                    graphics.drawString(paragraph.text, 20, y)
-                    y += 25
-                }
-            }
-
-            graphics.dispose()
-            doc.close()
-
-            // Convert to PNG bytes
-            val outputStream = ByteArrayOutputStream()
-            ImageIO.write(image, "PNG", outputStream)
-
-            return outputStream.toByteArray()
-        } catch (e: Exception) {
-            throw FileGenerationException("Failed to convert to image: ${e.message}")
-        }
+        return generateDocument(documentId, fieldValues, requestedFormat, userId).second
     }
 }

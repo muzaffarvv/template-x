@@ -22,7 +22,7 @@ import java.util.UUID
 class UserService(
     private val userRepository: UserRepo,
     private val organizationRepository: OrganizationRepo,
-    private val roleRepository: RoleRepo,
+    private val roleRepo: RoleRepo,
     private val passwordEncoder: PasswordEncoder
 ) : BaseServiceImpl<User, UserCreateDTO, UserUpdateDTO, UserResponseDTO, UserService.UserMapperStub, UserRepo>(
     userRepository, UserMapperStub()
@@ -51,25 +51,13 @@ class UserService(
 
     @Transactional
     override fun create(dto: UserCreateDTO): UserResponseDTO {
-        if (userRepository.findByUsernameAndDeletedFalse(dto.username) != null) {
-            throw UsernameAlreadyExistsException("Username already exists: ${dto.username}")
-        }
+        validateUsername(dto.username)
 
         val organization = organizationRepository.findByIdAndDeletedFalse(dto.organizationId)
             ?: throw OrganizationNotFoundException("Organization not found: ${dto.organizationId}")
 
-        val roles = if (dto.roleIds.isEmpty()) {
-            roleRepository.findByCodeAndDeletedFalse("USER")?.let { mutableSetOf(it) } ?: throw RoleNotFoundException("Default role 'USER' not found")
-        } else {
-            val foundRoles = roleRepository.findAllByIdInAndDeletedFalse(dto.roleIds)
-            if (foundRoles.size != dto.roleIds.size) {
-                throw RoleNotFoundException("One or more roles not found")
-            }
-            foundRoles
-        }
-
-        val nextCodeNumber = (userRepository.findMaxCodeNumber() ?: 0) + 1
-        val code = "EMP${nextCodeNumber.toString().padStart(3, '0')}"
+        val roles = fetchRolesForCreation(dto.roleIds)
+        val code = generateUserCode()
 
         val user = User(
             firstName = dto.firstName,
@@ -91,18 +79,19 @@ class UserService(
 
         dto.firstName?.let { user.firstName = it }
         dto.lastName?.let { user.lastName = it }
+
         dto.username?.let {
-            if (it != user.username && userRepository.findByUsernameAndDeletedFalse(it) != null) {
-                throw UsernameAlreadyExistsException("Username already exists: $it")
-            }
+            if (it != user.username) validateUsername(it)
             user.username = it
         }
+
         dto.organizationId?.let {
             user.organization = organizationRepository.findByIdAndDeletedFalse(it)
                 ?: throw OrganizationNotFoundException("Organization not found: $it")
         }
+
         dto.roleIds?.let {
-            val roles = roleRepository.findAllByIdInAndDeletedFalse(it)
+            val roles = roleRepo.findAllByIdInAndDeletedFalse(it)
             if (roles.isEmpty()) {
                 throw RoleNotFoundException("At least one role must be assigned to the user")
             }
@@ -110,6 +99,29 @@ class UserService(
         }
 
         return userRepository.save(user).toResponseDTO()
+    }
+
+
+    private fun validateUsername(username: String) {
+        if (userRepository.findByUsernameAndDeletedFalse(username) != null) {
+            throw UsernameAlreadyExistsException("Username already exists: $username")
+        }
+    }
+
+    private fun fetchRolesForCreation(roleIds: List<UUID>) = if (roleIds.isEmpty()) {
+        roleRepo.findByCodeAndDeletedFalse("USER")?.let { mutableSetOf(it) }
+            ?: throw RoleNotFoundException("Default role 'USER' not found")
+    } else {
+        val foundRoles = roleRepo.findAllByIdInAndDeletedFalse(roleIds)
+        if (foundRoles.size != roleIds.size) {
+            throw RoleNotFoundException("One or more roles not found")
+        }
+        foundRoles
+    }
+
+    private fun generateUserCode(): String {
+        val nextCodeNumber = (userRepository.findMaxCodeNumber() ?: 0) + 1
+        return "EMP${nextCodeNumber.toString().padStart(3, '0')}"
     }
 
     @Transactional(readOnly = true)

@@ -20,34 +20,58 @@ class OrganizationServiceImpl(
 ), OrganizationService {
 
     override fun convertCreateDtoToEntity(dto: OrganizationCreateDTO): Organization {
-        val nextCodeNumber = (repository.findMaxCodeNumber() ?: 0) + 1
-        val code = "ORG${nextCodeNumber.toString().padStart(3, '0')}"
+        validateOrganizationData(dto.name, dto.address)
 
-        // validation name address regex
-        
         return Organization(
             name = dto.name,
             address = dto.address,
             tagline = dto.tagline,
-            code = code
+            code = generateOrganizationCode()
         )
     }
 
     override fun updateEntityFromDto(entity: Organization, dto: OrganizationUpdateDTO) {
-        dto.name?.let { entity.name = it }
-        dto.address?.let { entity.address = it }
+        dto.name?.let {
+            validateName(it)
+            entity.name = it
+        }
+        dto.address?.let {
+            validateAddress(it)
+            entity.address = it
+        }
         dto.tagline?.let { entity.tagline = it }
     }
 
     override fun getById(id: UUID): OrganizationDTO {
-        val entity = getEntityOrNull(id) ?: throw OrganizationNotFoundException("Organization not found: $id")
+        val entity = findEntityOrThrow(id)
         return mapper.toDTO(entity)
     }
 
     override fun update(id: UUID, dto: OrganizationUpdateDTO): OrganizationDTO {
-        // validate name address
-        val entity = getEntityOrNull(id) ?: throw OrganizationNotFoundException("Organization not found: $id")
+        val entity = findEntityOrThrow(id)
         updateEntityFromDto(entity, dto)
         return mapper.toDTO(repository.save(entity))
+    }
+
+    private fun findEntityOrThrow(id: UUID): Organization {
+        return getEntityOrNull(id) ?: throw OrganizationNotFoundException("Organization not found: $id")
+    }
+
+    private fun generateOrganizationCode(): String {
+        val nextCodeNumber = (repository.findMaxCodeNumber() ?: 0) + 1
+        return "ORG${nextCodeNumber.toString().padStart(3, '0')}"
+    }
+
+    private fun validateOrganizationData(name: String, address: String?) {
+        validateName(name)
+        address?.let { validateAddress(it) }
+    }
+
+    private fun validateName(name: String) {
+        // Bu yerda regex yoki boshqa name validatsiyasi bo'ladi
+    }
+
+    private fun validateAddress(address: String) {
+        // Bu yerda address validatsiyasi bo'ladi
     }
 }

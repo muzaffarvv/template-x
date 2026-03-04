@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import uz.vv.templatex.base.BaseRepo
 import uz.vv.templatex.entity.Organization
+import java.util.UUID
 
 @Repository
 interface OrganizationRepo : BaseRepo<Organization> {
@@ -13,4 +14,6 @@ interface OrganizationRepo : BaseRepo<Organization> {
     fun findMaxCodeNumber(): Int?
 
     fun countByDeletedFalse(): Long
+
+    fun existsByIdAndDeletedFalse(id: UUID): Boolean
 }
